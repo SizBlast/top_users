@@ -1,0 +1,8 @@
+<?php
+
+/**
+ * Implements hook_uninstall().
+ */
+function top_users_uninstall(){
+    variable_del('top_users_max');
+}

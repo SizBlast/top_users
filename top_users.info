@@ -1,0 +1,4 @@
+name = Top users
+description = Allows the user to show a block on the site which displays the users who post the most articles on the site.
+package = "Custom modules"
+core = 7.x

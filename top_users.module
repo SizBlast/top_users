@@ -1,0 +1,129 @@
+<?php
+
+/**
+ * Implements hook_help().
+ * 
+ * Used for displayig help and module information on different (module)pages.
+ * 
+ * @param $path
+ *      Which path of the site we're using to display help
+ * @param $arg
+ *      Array that holds the curren path as returned from arg() function
+ */
+function top_users_help($path, $arg){
+    $output = '';
+    switch ($path) {
+        case 'admin/help#top_users': // Help page
+            $output .= '<p>' . t('Allows the user to show a block on the site which displays the users who post the most articles on the site.') . '</p>';
+            return $output;
+        case 'admin/config/content/top_users': // Settings page
+            $output .= '<p>' . t('Allows the user to show a block on the site which displays the users who post the most articles on the site.') . '</p>';
+            return $output;
+    }
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function top_users_block_info(){
+    $blocks['top_users'] = array(
+      // The name that will appear in the block list.
+      'info' => t('Top bloggers'),
+    );
+    return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ * 
+ * Prepares the contents of the block.
+ */
+function top_users_block_view($delta = ''){
+    $block = array();
+    switch ($delta) {
+        case 'top_users':
+            if (user_access('view top bloggers')) {
+                $block['subject'] = t('Top bloggers');
+                // Use our custom function to retrieve data.
+                $result = top_users_contents();
+                //Array to contain items for the block to render.
+                $items = array();
+                //Iterate over the resultset and format as links.
+                foreach ($result as $user) {
+                    $items[] = array(
+                      'data' => l($user->name, 'user/' . $user->uid),
+                    );
+                }
+                // No users found.
+                if (empty($items)) {
+                    $block['content'] = t('No users found.');
+                }
+                else {
+                    // Pas data through theme function.
+                    $block['content'] = theme('item_list', array('items' => $items));
+                }
+            }
+            break;
+    }
+    return $block;
+}
+
+/**
+ * Custom content function
+ * 
+ * Retrieves all the top bloggers from the database.
+ * 
+ * @return
+ *      A result set of the profane words.
+ */
+function top_users_contents(){
+    $max = variable_get('top_users_max', 3);
+    
+    $query = db_select('users', 'u');
+
+    $query->join('node', 'n', 'n.uid = u.uid');
+
+    $query->groupBy('u.uid');
+
+    $query->fields('u',array('name','uid'))
+    ->orderBy('node_count', 'DESC')
+    ->range(0,$max);
+    
+    $query->addExpression('COUNT(nid)', 'node_count');
+
+    $result = $query->execute();
+
+    return $result;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function top_users_menu(){
+    $items = array();
+    $items['admin/config/content/top_users'] = array(
+      'title' => 'Top Users settings',
+      'description' => 'Administer Top Users Settings',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('top_users_admin_settings_form'),
+      'access arguments' => array('manage top users settings'),
+      'file' => 'top_users.admin.inc',
+    );
+    return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function top_users_permission(){
+    $perm = array(
+      'manage top users settings' => array(
+        'title' => t('Manage the Top Users settings'),
+        'restrict access' => TRUE,
+      ),
+      'view top bloggers' => array(
+        'title' => t('View top bloggers in block'),
+      ),
+    );
+    return $perm;
+}
